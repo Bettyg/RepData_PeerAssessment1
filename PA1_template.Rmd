@@ -7,19 +7,144 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r}
+library(dplyr)
+```
 
+```{r}
+activitydata<- read.csv("activity.csv")  
+head(activitydata)  
+```
 
+```{r}
+dim(activitydata)  
+```
+
+```{r}
+summary(activitydata)  
+```
+
+```{r}
+activitydata$date<- as.Date(activitydata$date)  ##covert chr to date
+```
 
 ## What is mean total number of steps taken per day?
 
+```{r}
+##### 1.Calculate the total number of steps taken per day:
+Total_Steps<- activitydata%>%
+  group_by(date)%>%
+        filter(!is.na(steps))%>%
+        summarise(total_steps = sum(steps, na.rm=TRUE))
+Total_Steps
+```
+
+```{r}
+##### 2. Plot using ggplot:
+library(ggplot2)
+
+ggplot(Total_Steps, aes(x = total_steps)) +
+        geom_histogram(fill = "green", binwidth = 1000) +
+        labs(title = "Daily Steps", x = "Total Steps", y = "Frequency")
+```
+
+```{r}
+##### 3. Calculate and report the mean and median of the total number of steps taken per day:
+Mean_Steps<- mean(Total_Steps$total_steps, na.rm=TRUE)
+Mean_Steps
+```
+
+```{r}
+Median_Steps<- median(Total_Steps$total_steps, na.rm=TRUE)
+Median_Steps
+```
 
 
 ## What is the average daily activity pattern?
 
+```{r}
+##### 1. Calculating Avg. Steps:
+Interval<- activitydata%>%
+        group_by(interval)%>%
+        filter(!is.na(steps))%>%
+        summarise(avg_steps = mean(steps, na.rm=TRUE))
+Interval
+```
+
+```{r}
+##### 1.a Plotting Avg. Steps:
+ggplot(Interval, aes(x =interval , y=avg_steps)) +
+        geom_line(color="red", size=1) +
+        labs(title = "Avg. Daily Steps", x = "Interval", y = "Avg. Steps per day")
+```
+
+```{r}
+##### 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+Interval[which.max(Interval$avg_steps),]
+```
 
 
 ## Imputing missing values
 
+```{r}
+##### 1. Calculate total number of missing values in the dataset:
+sum(is.na(activitydata$steps))
+```
 
+```{r}
+##### 2. Imputing missing values using mean for each day and 3. Create a new dataset that is equal to the original dataset but with the missing data filled in:
+
+activitydata2<- activitydata
+nas<- is.na(activitydata2$steps)
+avg_interval<- tapply(activitydata2$steps, activitydata2$interval, mean, na.rm=TRUE, simplify = TRUE)
+activitydata2$steps[nas] <- avg_interval[as.character(activitydata2$interval[nas])]
+names(activitydata2)
+```
+
+```{r}
+##### 4. Check if no missing value is appearing:
+sum(is.na(activitydata2))
+```
+
+```{r}
+##### 5. Reorder columns (for better understanding of the data):
+activitydata2<- activitydata2[, c("date", "interval", "steps")]
+head(activitydata2)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+head(activitydata2)
+```
+
+```{r}
+##### 5.1 Create new varibale called WeekType for Weekday & Weekend:
+activitydata2<- activitydata2%>%
+        mutate(weektype= ifelse(weekdays(activitydata2$date)=="Saturday" | weekdays(activitydata2$date)=="Sunday", "Weekend", "Weekday"))
+
+head(activitydata2)
+```
+
+```{r}
+###### Plotting:
+Interval2<- activitydata2%>%
+        group_by(interval, weektype)%>%
+        summarise(avg_steps2 = mean(steps, na.rm=TRUE))
+head(Interval2)
+```
+
+```{r}
+plot<- ggplot(Interval2, aes(x =interval , y=avg_steps2, color=weektype)) +
+       geom_line() +
+       labs(title = "Avg. Daily Steps by Weektype", x = "Interval", y = "No. of Steps") +
+       facet_wrap(~weektype, ncol = 1, nrow=2)
+print(plot)
+```
+
+```{r}
+#####Ans: During the weekday, the test object is more active earlier in the day but the object is more active throughout the weekends probably because the oject is working during the weekdays, hence moving less during the day.
+```
+
+
+
